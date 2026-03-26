@@ -36,14 +36,14 @@ def main() -> None:
     today = date.today()
 
     # Tasks for Mochi (dog) — added out of order to show sorting
-    mochi.add_task(Task("Evening walk",   due_time="17:30", due_date=today, frequency="daily"))
-    mochi.add_task(Task("Morning walk",   due_time="07:00", due_date=today, frequency="daily"))
-    mochi.add_task(Task("Heartworm pill", due_time="08:00", due_date=today, frequency="weekly"))
+    mochi.add_task(Task("Evening walk",   due_time="17:30", due_date=today, frequency="daily",  priority="high",   duration_minutes=30))
+    mochi.add_task(Task("Morning walk",   due_time="07:00", due_date=today, frequency="daily",  priority="high",   duration_minutes=30))
+    mochi.add_task(Task("Heartworm pill", due_time="08:00", due_date=today, frequency="weekly", priority="high",   duration_minutes=5))
 
     # Tasks for Luna (cat) — intentional conflict at 08:00 to demo detect_conflicts
-    luna.add_task(Task("Breakfast feeding", due_time="08:00", due_date=today, frequency="daily"))
-    luna.add_task(Task("Medication",        due_time="08:00", due_date=today, frequency="once"))
-    luna.add_task(Task("Playtime",          due_time="19:00", due_date=today, frequency="once"))
+    luna.add_task(Task("Breakfast feeding", due_time="08:00", due_date=today, frequency="daily",  priority="high",   duration_minutes=10))
+    luna.add_task(Task("Medication",        due_time="08:00", due_date=today, frequency="once",   priority="high",   duration_minutes=5))
+    luna.add_task(Task("Playtime",          due_time="19:00", due_date=today, frequency="once",   priority="medium", duration_minutes=20))
 
     scheduler = Scheduler(owner)
 

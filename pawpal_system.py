@@ -4,7 +4,7 @@ Core logic layer for PawPal+ — the pet care scheduling system.
 """
 
 from __future__ import annotations
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields as dataclass_fields
 from datetime import date, timedelta
 from typing import Optional
 
@@ -18,6 +18,8 @@ class Task:
     due_date: date = field(default_factory=date.today)
     completed: bool = False
     frequency: str = "once"             # "once", "daily", "weekly"
+    priority: str = "medium"            # "low", "medium", "high"
+    duration_minutes: int = 0
 
     def mark_complete(self) -> None:
         """Mark this task as completed."""
@@ -44,7 +46,12 @@ class Pet:
 
         Example: pet.edit_task(0, due_time="09:00", description="Late walk")
         Raises IndexError if index is out of range.
+        Raises ValueError if an unknown Task field is provided.
         """
+        valid = {f.name for f in dataclass_fields(Task)}
+        for key in kwargs:
+            if key not in valid:
+                raise ValueError(f"'{key}' is not a valid Task field")
         task = self.tasks[index]
         for key, value in kwargs.items():
             setattr(task, key, value)
@@ -66,7 +73,7 @@ class Owner:
         self.pets.append(pet)
 
     def remove_pet(self, pet_name: str) -> None:
-        """Remove the first pet matching the given name. No-op if not found."""
+        """Remove all pets matching the given name. No-op if not found."""
         self.pets = [p for p in self.pets if p.name != pet_name]
 
     def list_pets(self) -> list[Pet]:
@@ -113,21 +120,15 @@ class Scheduler:
 
         Returns a list of human-readable warning strings.
         """
-        warnings: list[str] = []
         seen: dict[tuple[str, date, str], list[str]] = {}
-
         for pet, task in self.owner.get_all_tasks():
             key = (pet.name, task.due_date, task.due_time)
             seen.setdefault(key, []).append(task.description)
-
-        for (pet_name, due_date, due_time), descriptions in seen.items():
-            if len(descriptions) > 1:
-                conflict_list = " | ".join(descriptions)
-                warnings.append(
-                    f"CONFLICT — {pet_name} on {due_date} at {due_time}: "
-                    f"[{conflict_list}]"
-                )
-        return warnings
+        return [
+            f"CONFLICT — {pet_name} on {due_date} at {due_time}: [{' | '.join(descs)}]"
+            for (pet_name, due_date, due_time), descs in seen.items()
+            if len(descs) > 1
+        ]
 
     def handle_recurring(self, pet: Pet, task: Task) -> None:
         """Mark a recurring task complete and schedule the next occurrence.
@@ -135,6 +136,8 @@ class Scheduler:
         'daily' advances due_date by 1 day; 'weekly' by 7 days.
         'once' tasks are only marked complete — no follow-up is created.
         """
+        if task not in pet.tasks:
+            raise ValueError(f"Task '{task.description}' does not belong to {pet.name}")
         task.mark_complete()
 
         if task.frequency == "daily":

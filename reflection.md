@@ -7,7 +7,7 @@
 - Briefly describe your initial UML design.
 - What classes did you include, and what responsibilities did you assign to each?
 
-The UML design used four classes connected in a clear hierarchy: Owner → Pet → Task, with Scheduler as a separate service that the Owner uses to organize tasks.
+The UML design uses four classes connected in a clear hierarchy: Owner → Pet → Task, with Scheduler as a separate service that the Owner uses to organize tasks.
 
 - **Task** — the smallest unit of work. Holds a description, scheduled time (HH:MM string), due date, completion status, and recurrence frequency ("once", "daily", "weekly"). Its only behavior is `mark_complete()`, keeping it a pure data object with one action.
 - **Pet** — represents an individual animal. Stores identifying info (name, species) plus health/care context (dietary restrictions, allergies, health conditions). Owns a list of Tasks and is responsible for adding, editing, and listing them.
@@ -19,6 +19,9 @@ The UML design used four classes connected in a clear hierarchy: Owner → Pet �
 
 - Did your design change during implementation?
 - If yes, describe at least one change and why you made it.
+
+Yes, it changed slightly after I asked Claude to review the skeleton of pawpal_system.py.
+- **edit_task() method** Initially, edit_task was able to silently set unknown fields. The solution was to validate kwargs against the actual fields of the Task dataclass before applying them. This catches typos like descrption="Walk" at the call site instead of silently corrupting the object. Without this change there was the possibility of the user accidentally, and silently adding fields that shouldn't exist.
 
 ---
 
