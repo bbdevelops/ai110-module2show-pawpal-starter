@@ -7,6 +7,14 @@
 - Briefly describe your initial UML design.
 - What classes did you include, and what responsibilities did you assign to each?
 
+The UML design used four classes connected in a clear hierarchy: Owner → Pet → Task, with Scheduler as a separate service that the Owner uses to organize tasks.
+
+- **Task** — the smallest unit of work. Holds a description, scheduled time (HH:MM string), due date, completion status, and recurrence frequency ("once", "daily", "weekly"). Its only behavior is `mark_complete()`, keeping it a pure data object with one action.
+- **Pet** — represents an individual animal. Stores identifying info (name, species) plus health/care context (dietary restrictions, allergies, health conditions). Owns a list of Tasks and is responsible for adding, editing, and listing them.
+- **Owner** — the top-level entity. Manages a collection of Pets and provides `get_all_tasks()`, which flattens all pets' tasks into `(Pet, Task)` pairs so the rest of the system always knows which pet a task belongs to. Also handles adding and removing pets.
+- **Scheduler** — the algorithmic layer. Takes an Owner at construction and reads tasks fresh on every call. Responsible for sorting tasks chronologically, filtering by status or pet, detecting time conflicts, and auto-scheduling the next occurrence of recurring tasks.
+
+
 **b. Design changes**
 
 - Did your design change during implementation?
