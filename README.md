@@ -15,6 +15,7 @@
 | **Daily recurrence** | Marking a `daily` task complete automatically creates the next occurrence dated +1 day, with all fields (priority, duration, frequency) preserved. |
 | **Weekly recurrence** | Same as daily recurrence but creates the next occurrence +7 days out. |
 | **Task editing** | Any field on an existing task (description, time, date, priority, frequency, duration) can be updated in-place via an Edit expander. |
+| **Find next available slot** | Scans a pet's schedule from a given date and returns the earliest open window of a requested duration, searching up to a configurable number of days ahead. Returns `(date, "HH:MM")` or `None` if no window is found. |
 
 ---
 
@@ -89,7 +90,7 @@ streamlit run app.py
 python -m pytest
 ```
 
-The test suite in `tests/test_pawpal.py` contains 12 tests organized into two groups:
+The test suite in `tests/test_pawpal.py` contains 15 tests organized into two groups:
 
 **Core behavior (tests 1–6)** — verifies that the fundamental building blocks work correctly.
 
@@ -112,8 +113,33 @@ The test suite in `tests/test_pawpal.py` contains 12 tests organized into two gr
 | `test_handle_recurring_once_no_new_task` | Completing a one-time task marks it done without generating a follow-up |
 | `test_owner_no_pets_empty_results` | `sort_tasks()`, `detect_conflicts()`, and `filter_tasks()` all return `[]` safely when the owner has no pets |
 | `test_edit_task_validation` | `edit_task()` applies valid field updates and raises `ValueError` for unknown field names |
+| `test_find_next_available_slot_basic` | Returns the correct start time for the first gap that fits the requested duration |
+| `test_find_next_available_slot_rolls_to_next_day` | Advances to the next calendar day when no gap exists today |
+| `test_find_next_available_slot_returns_none_when_exhausted` | Returns `None` after exhausting `max_days_ahead` with no valid slot found |
 
 **Confidence level: ★★★★★** — all required behaviors and known edge cases are covered across all four classes and all five Scheduler features.
+
+---
+
+## How Claude Code Agent Mode Was Used
+
+The `find_next_available_slot` algorithm was designed and implemented with Claude Code running in **Agent Mode** — an agentic workflow where the AI reads, plans, and writes code across multiple files in a single session rather than handling one prompt at a time.
+
+**What Agent Mode did in this session:**
+
+- Read all five target files (`pawpal_system.py`, `main.py`, `app.py`, `tests/test_pawpal.py`, `README.md`) before writing a single line, building a full picture of existing conventions.
+- Determined that the `datetime` class was *not* needed (time arithmetic is done in integer minutes), avoiding a spurious import that Pylance would have flagged.
+- Designed a gap-scan algorithm (O(n log n) sort + O(n) linear scan) instead of a brute-force minute-by-minute loop, keeping the method fast and readable.
+- Matched the Streamlit UI layout to existing patterns — advanced options hidden in `st.expander`, consistent with the Sort/Filter `st.popover` controls already in the file.
+- Wrote the three new tests (13–15) following the exact `# ── Test N: description ──` comment convention and numbering already in the test file.
+
+**What was reviewed before accepting:**
+
+- The `duration_minutes = 0` edge case: a zero-duration task produces an empty interval `(start, start)` that the linear scan skips — verified correct without adding a special guard.
+- The `day_start >= day_end` guard: added because the UI exposes both as free `time_input` widgets that a user could invert.
+- `ValueError` for unknown pet names: kept consistent with `handle_recurring`'s own error-raising behavior rather than returning `None` silently.
+
+Agent Mode is most valuable when a feature touches multiple files and requires understanding existing conventions before deciding *how* to implement. The ability to read, reason across files, and write in a single session — without the developer re-explaining context for each file — is the meaningful productivity gain over a standard chat prompt.
 
 ---
 

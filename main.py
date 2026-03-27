@@ -147,6 +147,28 @@ def main() -> None:
     ))
     console.print()
 
+    # ── Find next available slot demo ───────────────────────────────────────
+    slot = scheduler.find_next_available_slot(
+        pet_name="Mochi",
+        duration_minutes=45,
+        search_date=today,
+        day_start="08:00",
+        day_end="20:00",
+        max_days_ahead=7,
+    )
+    if slot:
+        slot_date, slot_time = slot
+        slot_content = Text.assemble(
+            Text("Pet:      Mochi\n",         style="dim"),
+            Text("Duration: 45 minutes\n",    style="dim"),
+            Text("Window:   08:00 – 20:00\n", style="dim"),
+            Text(f"Result:   {slot_date}  {slot_time}", style="bold green"),
+        )
+    else:
+        slot_content = Text("No available slot found within 7 days.", style="red")
+    console.print(Panel(slot_content, title="[bold]Find Next Available Slot — Mochi[/]", border_style="cyan"))
+    console.print()
+
     # ── Final schedule ──────────────────────────────────────────────────────
     console.print(task_table(scheduler.sort_tasks(), "Final Schedule (after edits & recurring update)", show_date=True))
     console.rule()

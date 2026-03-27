@@ -243,3 +243,54 @@ if st.button("Generate schedule"):
         ])
     else:
         st.info("No tasks scheduled yet.")
+
+st.divider()
+
+# ─── Find Next Available Slot ─────────────────────────────────────────────
+st.subheader("Find Next Available Slot")
+st.caption("Find the earliest open window in a pet's schedule.")
+
+if not pet_names:
+    st.info("Add a pet above to use this feature.")
+else:
+    slot_col1, slot_col2 = st.columns([2, 1])
+    with slot_col1:
+        slot_pet = st.selectbox("Pet", pet_names, key="slot_pet")
+    with slot_col2:
+        slot_duration = st.number_input(
+            "Duration (min)", min_value=1, max_value=240, value=30, key="slot_dur"
+        )
+
+    with st.expander("Advanced options"):
+        adv1, adv2, adv3 = st.columns(3)
+        with adv1:
+            slot_date = st.date_input("Start searching from", value=date.today(), key="slot_date")
+        with adv2:
+            slot_day_start = st.time_input("Day start", value=time(8, 0), key="slot_day_start")
+        with adv3:
+            slot_day_end = st.time_input("Day end", value=time(20, 0), key="slot_day_end")
+        slot_max_days = st.slider("Max days to search", 1, 14, 7, key="slot_max_days")
+
+    if st.button("Find slot", key="find_slot_btn"):
+        try:
+            result = scheduler.find_next_available_slot(
+                pet_name=slot_pet,
+                duration_minutes=int(slot_duration),
+                search_date=slot_date,
+                day_start=slot_day_start.strftime("%H:%M"),
+                day_end=slot_day_end.strftime("%H:%M"),
+                max_days_ahead=slot_max_days,
+            )
+            if result:
+                found_date, found_time = result
+                st.success(
+                    f"Next available {int(slot_duration)}-min slot for "
+                    f"**{slot_pet}**: {found_date} at **{found_time}**"
+                )
+            else:
+                st.info(
+                    f"No {int(slot_duration)}-min slot found for {slot_pet} "
+                    f"within {slot_max_days} days. Try expanding the search window."
+                )
+        except ValueError as e:
+            st.error(str(e))

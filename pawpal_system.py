@@ -154,3 +154,69 @@ class Scheduler:
             return
 
         pet.add_task(dataclass_replace(task, due_date=next_date, completed=False))
+
+    # ── Private helpers for time arithmetic ───────────────────────────────
+
+    def _parse_hhmm(self, hhmm: str) -> int:
+        """Convert 'HH:MM' string to total minutes since midnight."""
+        h, m = hhmm.split(":")
+        return int(h) * 60 + int(m)
+
+    def _minutes_to_hhmm(self, minutes: int) -> str:
+        """Convert total minutes since midnight back to 'HH:MM' string."""
+        return f"{minutes // 60:02d}:{minutes % 60:02d}"
+
+    def find_next_available_slot(
+        self,
+        pet_name: str,
+        duration_minutes: int,
+        search_date: Optional[date] = None,
+        day_start: str = "08:00",
+        day_end: str = "20:00",
+        max_days_ahead: int = 7,
+    ) -> Optional[tuple[date, str]]:
+        """Return (date, 'HH:MM') for the earliest open slot of at least
+        duration_minutes, scanning up to max_days_ahead days from search_date.
+        Returns None if no slot is found in that window.
+
+        Raises ValueError for invalid inputs (bad duration, inverted window,
+        or unknown pet name).
+        """
+        if duration_minutes <= 0:
+            raise ValueError("duration_minutes must be a positive integer")
+        if self._parse_hhmm(day_start) >= self._parse_hhmm(day_end):
+            raise ValueError("day_start must be earlier than day_end")
+
+        pet = next((p for p in self.owner.pets if p.name == pet_name), None)
+        if pet is None:
+            raise ValueError(f"No pet named '{pet_name}' found")
+
+        candidate_date = search_date or date.today()
+        win_start = self._parse_hhmm(day_start)
+        win_end = self._parse_hhmm(day_end)
+
+        for offset in range(max_days_ahead + 1):
+            target = candidate_date + timedelta(days=offset)
+
+            # Build sorted occupied intervals [start_min, end_min) for this day.
+            # Tasks with duration_minutes == 0 produce empty intervals and are ignored.
+            intervals = sorted(
+                (
+                    (self._parse_hhmm(t.due_time),
+                     self._parse_hhmm(t.due_time) + t.duration_minutes)
+                    for t in pet.tasks
+                    if t.due_date == target
+                ),
+                key=lambda iv: iv[0],
+            )
+
+            probe = win_start
+            for occ_start, occ_end in intervals:
+                if occ_start - probe >= duration_minutes:
+                    return (target, self._minutes_to_hhmm(probe))
+                probe = max(probe, occ_end)
+
+            if win_end - probe >= duration_minutes:
+                return (target, self._minutes_to_hhmm(probe))
+
+        return None

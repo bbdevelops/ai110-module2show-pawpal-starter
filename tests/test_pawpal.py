@@ -222,3 +222,48 @@ def test_owner_no_pets_empty_results():
     assert scheduler.sort_tasks() == []
     assert scheduler.detect_conflicts() == []
     assert scheduler.filter_tasks() == []
+
+
+# ── Test 13: find_next_available_slot() returns the first gap that fits ───────
+
+def test_find_next_available_slot_basic(today):
+    """find_next_available_slot() must return the correct start time for the first gap."""
+    owner = Owner(name="Zara")
+    pet = Pet(name="Boba", species="dog")
+    # 08:00–08:30 and 10:00–10:20 are occupied; a 45-min request should land at 08:30
+    pet.add_task(Task("Walk",    due_time="08:00", due_date=today, duration_minutes=30))
+    pet.add_task(Task("Feeding", due_time="10:00", due_date=today, duration_minutes=20))
+    owner.add_pet(pet)
+    result = Scheduler(owner).find_next_available_slot("Boba", 45, search_date=today)
+    assert result == (today, "08:30")
+
+
+# ── Test 14: find_next_available_slot() rolls to the next day when today is full
+
+def test_find_next_available_slot_rolls_to_next_day(today):
+    """find_next_available_slot() must advance to the next day when today has no gap."""
+    owner = Owner(name="Zara")
+    pet = Pet(name="Boba", species="dog")
+    pet.add_task(Task("Block A", due_time="08:00", due_date=today, duration_minutes=360))  # 08:00–14:00
+    pet.add_task(Task("Block B", due_time="14:00", due_date=today, duration_minutes=360))  # 14:00–20:00
+    owner.add_pet(pet)
+    result = Scheduler(owner).find_next_available_slot(
+        "Boba", 30, search_date=today, day_start="08:00", day_end="20:00", max_days_ahead=3
+    )
+    assert result == (today + timedelta(days=1), "08:00")
+
+
+# ── Test 15: find_next_available_slot() returns None after exhausting all days ─
+
+def test_find_next_available_slot_returns_none_when_exhausted(today):
+    """find_next_available_slot() must return None when no slot is found within max_days_ahead."""
+    owner = Owner(name="Zara")
+    pet = Pet(name="Boba", species="dog")
+    for offset in range(2):
+        pet.add_task(Task("Block", due_time="08:00",
+                          due_date=today + timedelta(days=offset), duration_minutes=720))
+    owner.add_pet(pet)
+    result = Scheduler(owner).find_next_available_slot(
+        "Boba", 30, search_date=today, day_start="08:00", day_end="20:00", max_days_ahead=1
+    )
+    assert result is None
