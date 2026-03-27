@@ -27,27 +27,29 @@ Owner "1" --> "1"    Scheduler : uses
 
 ## Smarter Scheduling
 
-The `Scheduler` class implements four algorithmic features:
+The `Scheduler` class implements five algorithmic features:
 
 1. **Sort by time** — `sort_tasks()` returns all tasks across all pets in chronological order (by due date, then due time). Tasks added in any order are always displayed correctly.
 
-2. **Filter tasks** — `filter_tasks(completed, pet_name)` narrows the task list by completion status, pet name, or both. Useful for showing only today's pending tasks or a single pet's schedule.
+2. **Sort by priority** — `sort_by_priority()` returns tasks ordered high → medium → low, using a rank map `{"high": 0, "medium": 1, "low": 2}`. Time is used as a tiebreaker within the same priority level. Both sort modes are user-selectable in the UI via a **Sort ▾** popover.
 
-3. **Conflict detection** — `detect_conflicts()` scans for any two tasks assigned to the same pet at the same date and time, returning human-readable warnings rather than crashing.
+3. **Filter tasks** — `filter_tasks(completed, pet_name)` narrows the task list by completion status, pet name, or both. Useful for showing only today's pending tasks or a single pet's schedule. Accessible in the UI via a **Filter ▾** popover alongside a live summary (`Showing X of Y tasks`).
 
-4. **Recurring task automation** — `handle_recurring(pet, task)` marks a task complete and automatically creates the next occurrence: +1 day for `"daily"` tasks, +7 days for `"weekly"` tasks. One-time tasks are only marked complete.
+4. **Conflict detection** — `detect_conflicts()` scans for any two tasks assigned to the same pet at the same date and time, returning human-readable warnings rather than crashing. Fires immediately when a task is added and again on "Generate Schedule".
+
+5. **Recurring task automation** — `handle_recurring(pet, task)` marks a task complete and automatically creates the next occurrence: +1 day for `"daily"` tasks, +7 days for `"weekly"` tasks. All fields (priority, duration, frequency) are copied to the next occurrence via `dataclasses.replace()`. One-time tasks are only marked complete.
 
 ---
 
 ## Running the Demo
 
-The CLI demo in `main.py` creates one Owner (Jordan), two Pets (Mochi the dog and Luna the cat), and five tasks. It exercises all four Scheduler features and prints readable output to the terminal.
+The CLI demo in `main.py` creates one Owner (Jordan), two Pets (Mochi the dog and Luna the cat), and six tasks. It exercises all five Scheduler features and prints richly formatted output using the `rich` library (tables, panels, color-coded priority).
 
 ```bash
 python main.py
 ```
 
-Expected output includes: a sorted today's schedule, a conflict warning for Luna's 08:00 overlap, a filtered pending task list, a recurring task being completed and rescheduled, a task edit, and a pet being added then removed.
+Expected output includes: a schedule sorted by time, a schedule sorted by priority, a conflict warning for Luna's 08:00 overlap, a filtered pending task list, a Mochi-only filtered view, a recurring task being completed and rescheduled (with all fields preserved), a task edit, and a pet being added then removed.
 
 ---
 
@@ -86,8 +88,8 @@ pip install -r requirements.txt
 
 ```
 pawpal_system.py      # Core logic: Task, Pet, Owner, Scheduler
-main.py               # CLI demo script
-app.py                # Streamlit UI (Phase 3)
+main.py               # CLI demo script (rich-formatted output)
+app.py                # Streamlit UI — sort, filter, complete, and edit tasks
 tests/
   test_pawpal.py      # Pytest suite
 Mermaid.js            # UML class diagram source (paste into mermaid.live)

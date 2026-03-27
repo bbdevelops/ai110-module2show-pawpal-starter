@@ -4,7 +4,7 @@ Core logic layer for PawPal+ — the pet care scheduling system.
 """
 
 from __future__ import annotations
-from dataclasses import dataclass, field, fields as dataclass_fields
+from dataclasses import dataclass, field, fields as dataclass_fields, replace as dataclass_replace
 from datetime import date, timedelta
 from typing import Optional
 
@@ -99,6 +99,12 @@ class Scheduler:
         pairs = self.owner.get_all_tasks()
         return sorted(pairs, key=lambda pair: (pair[1].due_date, pair[1].due_time))
 
+    def sort_by_priority(self) -> list[tuple[Pet, Task]]:
+        """Return all tasks sorted by priority (high → medium → low), then by time."""
+        _rank = {"high": 0, "medium": 1, "low": 2}
+        pairs = self.owner.get_all_tasks()
+        return sorted(pairs, key=lambda pair: (_rank.get(pair[1].priority, 1), pair[1].due_date, pair[1].due_time))
+
     def filter_tasks(
         self,
         completed: Optional[bool] = None,
@@ -120,13 +126,13 @@ class Scheduler:
 
         Returns a list of human-readable warning strings.
         """
-        seen: dict[tuple[str, date, str], list[str]] = {}
+        tasks_by_slot: dict[tuple[str, date, str], list[str]] = {}
         for pet, task in self.owner.get_all_tasks():
             key = (pet.name, task.due_date, task.due_time)
-            seen.setdefault(key, []).append(task.description)
+            tasks_by_slot.setdefault(key, []).append(task.description)
         return [
             f"CONFLICT — {pet_name} on {due_date} at {due_time}: [{' | '.join(descs)}]"
-            for (pet_name, due_date, due_time), descs in seen.items()
+            for (pet_name, due_date, due_time), descs in tasks_by_slot.items()
             if len(descs) > 1
         ]
 
@@ -147,11 +153,4 @@ class Scheduler:
         else:
             return
 
-        next_task = Task(
-            description=task.description,
-            due_time=task.due_time,
-            due_date=next_date,
-            completed=False,
-            frequency=task.frequency,
-        )
-        pet.add_task(next_task)
+        pet.add_task(dataclass_replace(task, due_date=next_date, completed=False))

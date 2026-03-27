@@ -5,17 +5,50 @@ Run with: python main.py
 """
 
 from datetime import date
+
+import sys
+sys.stdout.reconfigure(encoding="utf-8")
+
+from rich.console import Console
+from rich.table import Table
+from rich import box
+from rich.panel import Panel
+from rich.text import Text
+
 from pawpal_system import Task, Pet, Owner, Scheduler
 
+console = Console()
 
-def header(title: str) -> None:
-    print(f"\n{'=' * 52}")
-    print(f"  {title}")
-    print(f"{'=' * 52}")
+PRIORITY_COLOR = {"high": "red", "medium": "yellow", "low": "green"}
+
+
+def task_table(pairs, title: str, show_date: bool = False) -> Table:
+    """Build a rich Table from a list of (Pet, Task) pairs."""
+    table = Table(title=title, box=box.ROUNDED, show_lines=True, title_style="bold cyan")
+    table.add_column("Status", justify="center", style="dim", width=6)
+    table.add_column("Pet",    style="bold magenta")
+    if show_date:
+        table.add_column("Date", style="cyan", min_width=10, no_wrap=True)
+    table.add_column("Time",     style="cyan")
+    table.add_column("Task",     style="white")
+    table.add_column("Priority", justify="center")
+    table.add_column("Repeat",   style="dim")
+    table.add_column("Duration", justify="right", style="dim")
+
+    for pet, task in pairs:
+        status = "[green]DONE[/]" if task.completed else "[yellow]TODO[/]"
+        pri_color = PRIORITY_COLOR.get(task.priority, "white")
+        priority_cell = f"[{pri_color}]{task.priority}[/]"
+        row = [status, pet.name]
+        if show_date:
+            row.append(str(task.due_date))
+        row += [task.due_time, task.description, priority_cell, task.frequency, f"{task.duration_minutes} min"]
+        table.add_row(*row)
+    return table
 
 
 def main() -> None:
-    # ── Build the object graph ────────────────────────────────────────────────
+    # ── Build the object graph ──────────────────────────────────────────────
     owner = Owner(name="Jordan")
 
     mochi = Pet(
@@ -47,61 +80,76 @@ def main() -> None:
 
     scheduler = Scheduler(owner)
 
-    # ── Today's Schedule (sorted chronologically) ─────────────────────────────
-    header("Today's Schedule — All Pets (sorted by time)")
-    for pet, task in scheduler.sort_tasks():
-        status = "DONE" if task.completed else "TODO"
-        print(f"  [{status}]  {task.due_time}  {pet.name:<6}  {task.description}")
+    console.rule("[bold cyan]PawPal+ Demo[/]")
+    console.print()
 
-    # ── Conflict detection ────────────────────────────────────────────────────
-    header("Conflict Warnings")
+    # ── Today's Schedule (sorted by time) ──────────────────────────────────
+    console.print(task_table(scheduler.sort_tasks(), "Today's Schedule — sorted by time"))
+    console.print()
+
+    # ── Sort by priority ────────────────────────────────────────────────────
+    console.print(task_table(scheduler.sort_by_priority(), "Today's Schedule — sorted by priority"))
+    console.print()
+
+    # ── Conflict detection ──────────────────────────────────────────────────
     conflicts = scheduler.detect_conflicts()
     if conflicts:
-        for warning in conflicts:
-            print(f"  ! {warning}")
+        conflict_text = "\n".join(f"  [!]  {w}" for w in conflicts)
+        console.print(Panel(conflict_text, title="[bold red]Conflict Warnings[/]", border_style="red"))
     else:
-        print("  No conflicts found.")
+        console.print(Panel("[green]No conflicts found.[/]", title="Conflict Check", border_style="green"))
+    console.print()
 
-    # ── Filter: pending tasks only ────────────────────────────────────────────
-    header("Pending Tasks — All Pets")
-    for pet, task in scheduler.filter_tasks(completed=False):
-        print(f"  {pet.name:<6}  {task.due_time}  {task.description}")
+    # ── Filter: pending tasks only ──────────────────────────────────────────
+    pending = scheduler.filter_tasks(completed=False)
+    console.print(task_table(pending, "Pending Tasks — all pets"))
+    console.print()
 
-    # ── Filter: Mochi's tasks only ────────────────────────────────────────────
-    header("Mochi's Tasks Only")
-    for pet, task in scheduler.filter_tasks(pet_name="Mochi"):
-        status = "DONE" if task.completed else "TODO"
-        print(f"  [{status}]  {task.due_time}  {task.description}")
+    # ── Filter: Mochi's tasks only ──────────────────────────────────────────
+    console.print(task_table(scheduler.filter_tasks(pet_name="Mochi"), "Mochi's Tasks Only"))
+    console.print()
 
-    # ── Recurring task demo ───────────────────────────────────────────────────
-    header("Recurring Task — Mark Mochi's Morning Walk Complete")
+    # ── Recurring task demo ─────────────────────────────────────────────────
     morning_walk = mochi.list_tasks()[1]  # "Morning walk" at 07:00
-    print(f"  Before: '{morning_walk.description}' | completed={morning_walk.completed}")
+    before = Text(f"Before  completed={morning_walk.completed}", style="dim")
     scheduler.handle_recurring(mochi, morning_walk)
-    print(f"  After:  '{morning_walk.description}' | completed={morning_walk.completed}")
     next_walk = mochi.list_tasks()[-1]
-    print(f"  Next:   '{next_walk.description}' | due_date={next_walk.due_date} | completed={next_walk.completed}")
+    after = Text(f"After   completed={morning_walk.completed}", style="green")
+    next_line = Text(f"Next    due_date={next_walk.due_date}  completed={next_walk.completed}", style="cyan")
+    console.print(Panel(
+        Text.assemble(before, "\n", after, "\n", next_line),
+        title="[bold]Recurring Task — Mochi's Morning Walk[/]",
+        border_style="cyan",
+    ))
+    console.print()
 
-    # ── Edit task demo ────────────────────────────────────────────────────────
-    header("Edit Task — Change Luna's Playtime to 20:00")
+    # ── Edit task demo ──────────────────────────────────────────────────────
     playtime = luna.list_tasks()[2]
-    print(f"  Before: due_time={playtime.due_time}")
+    before_time = playtime.due_time
     luna.edit_task(2, due_time="20:00")
-    print(f"  After:  due_time={playtime.due_time}")
+    console.print(Panel(
+        f"Before  due_time=[yellow]{before_time}[/]\nAfter   due_time=[green]{playtime.due_time}[/]",
+        title="[bold]Edit Task — Luna's Playtime[/]",
+        border_style="yellow",
+    ))
+    console.print()
 
-    # ── Remove pet demo ───────────────────────────────────────────────────────
-    header("Remove Pet — Add then Remove a Temporary Pet")
+    # ── Remove pet demo ─────────────────────────────────────────────────────
     temp = Pet(name="Biscuit", species="rabbit")
     owner.add_pet(temp)
-    print(f"  Pets before removal: {[p.name for p in owner.list_pets()]}")
+    before_names = [p.name for p in owner.list_pets()]
     owner.remove_pet("Biscuit")
-    print(f"  Pets after removal:  {[p.name for p in owner.list_pets()]}")
+    after_names = [p.name for p in owner.list_pets()]
+    console.print(Panel(
+        f"Before  {before_names}\nAfter   {after_names}",
+        title="[bold]Remove Pet — Biscuit[/]",
+        border_style="magenta",
+    ))
+    console.print()
 
-    # ── Final schedule ────────────────────────────────────────────────────────
-    header("Final Schedule (after edits & recurring update)")
-    for pet, task in scheduler.sort_tasks():
-        status = "DONE" if task.completed else "TODO"
-        print(f"  [{status}]  {task.due_date}  {task.due_time}  {pet.name:<6}  {task.description}")
+    # ── Final schedule ──────────────────────────────────────────────────────
+    console.print(task_table(scheduler.sort_tasks(), "Final Schedule (after edits & recurring update)", show_date=True))
+    console.rule()
 
 
 if __name__ == "__main__":

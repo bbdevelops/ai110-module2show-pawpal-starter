@@ -21,6 +21,7 @@ The UML design uses four classes connected in a clear hierarchy: Owner → Pet �
 - If yes, describe at least one change and why you made it.
 
 Yes, it changed slightly after I asked Claude to review the skeleton of pawpal_system.py.
+
 - **edit_task() method** Initially, edit_task was able to silently set unknown fields. The solution was to validate kwargs against the actual fields of the Task dataclass before applying them. This catches typos like descrption="Walk" at the call site instead of silently corrupting the object. Without this change there was the possibility of the user accidentally, and silently adding fields that shouldn't exist.
 
 ---
@@ -32,10 +33,16 @@ Yes, it changed slightly after I asked Claude to review the skeleton of pawpal_s
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
 - How did you decide which constraints mattered most?
 
+Time was the obvious foundation — every real care task has a when, and chronological order is the minimum useful output for a daily schedule. Priority came second because not all tasks carry equal urgency; a heartworm pill missed is more consequential than playtime skipped. Recurrence reduced the biggest practical pain point for a daily routine app — having to re-add the same tasks every day.
+
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
 - Why is that tradeoff reasonable for this scenario?
+
+Duration overlap was evaluated and intentionally left out. Implementing it would require every task to have a reliable duration, and it would change conflict detection from a simple equality check into an interval-intersection problem. The tradeoff favors simplicity: the owner is responsible for leaving buffer time, and the warning system catches the most obvious error (exact double-booking) without that added complexity.
+
+Also, the conflict detection method detect_conflicts() uses a compact list comprehension that is idiomatic Python but slightly harder to scan. A loop-based version was evaluated and rejected because the added verbosity wasn't justified for a 10-line function.
 
 ---
 
