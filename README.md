@@ -53,13 +53,15 @@ Expected output includes: a schedule sorted by time, a schedule sorted by priori
 
 ---
 
-## Running the Tests
+## Testing PawPal+
 
 ```bash
 python -m pytest
 ```
 
-The test suite in `tests/test_pawpal.py` covers:
+The test suite in `tests/test_pawpal.py` contains 11 tests organized into two groups:
+
+**Core behavior (tests 1–6)** — verifies that the fundamental building blocks work correctly.
 
 | Test | What it verifies |
 |---|---|
@@ -70,7 +72,18 @@ The test suite in `tests/test_pawpal.py` covers:
 | `test_detect_conflicts_same_pet_same_time` | `detect_conflicts()` flags same-pet same-time collisions |
 | `test_handle_recurring_daily` | Completing a daily task creates a new task dated tomorrow |
 
-**Confidence level: ★★★★☆** — all happy paths and the most important edge cases are covered. Gaps: no test for `edit_task` validation, weekly recurrence, or an owner with zero pets.
+**Edge cases (tests 7–11)** — verifies boundary conditions and less-obvious behaviors.
+
+| Test | What it verifies |
+|---|---|
+| `test_sort_by_priority_order` | `sort_by_priority()` returns tasks in high → medium → low order |
+| `test_filter_tasks_by_pet_name` | `filter_tasks(pet_name=...)` returns only tasks belonging to the named pet |
+| `test_handle_recurring_weekly` | Completing a weekly task creates a new task 7 days out, with all fields preserved |
+| `test_handle_recurring_once_no_new_task` | Completing a one-time task marks it done without generating a follow-up |
+| `test_owner_no_pets_empty_results` | `sort_tasks()`, `detect_conflicts()`, and `filter_tasks()` all return `[]` safely when the owner has no pets |
+| `test_edit_task_validation` | `edit_task()` applies valid field updates and raises `ValueError` for unknown field names |
+
+**Confidence level: ★★★★★** — all required behaviors and known edge cases are covered across all four classes and all five Scheduler features.
 
 ---
 

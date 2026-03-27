@@ -111,3 +111,114 @@ def test_handle_recurring_daily(today):
     assert new_task.due_date == today + timedelta(days=1)
     assert new_task.completed is False
     assert new_task.frequency == "daily"
+
+
+# ── Test 7: sort_by_priority() returns high → medium → low ───────────────────
+
+def test_sort_by_priority_order(today):
+    """sort_by_priority() must return tasks ordered high, then medium, then low."""
+    owner = Owner(name="Casey")
+    pet = Pet(name="Peanut", species="dog")
+    pet.add_task(Task("Afternoon walk", due_time="15:00", due_date=today, priority="low"))
+    pet.add_task(Task("Medication",     due_time="09:00", due_date=today, priority="high"))
+    pet.add_task(Task("Feeding",        due_time="12:00", due_date=today, priority="medium"))
+    owner.add_pet(pet)
+    scheduler = Scheduler(owner)
+
+    sorted_pairs = scheduler.sort_by_priority()
+    priorities = [task.priority for _, task in sorted_pairs]
+    assert priorities == ["high", "medium", "low"], f"Expected high/medium/low but got {priorities}"
+
+
+# ── Test 8: filter_tasks(pet_name=...) isolates a single pet ─────────────────
+
+def test_filter_tasks_by_pet_name(owner_with_two_pets):
+    """filter_tasks(pet_name='Mochi') must return only Mochi's tasks."""
+    owner, mochi, _ = owner_with_two_pets
+    scheduler = Scheduler(owner)
+
+    result = scheduler.filter_tasks(pet_name="Mochi")
+
+    assert len(result) == len(mochi.list_tasks())
+    for pet, _ in result:
+        assert pet.name == "Mochi", f"Expected only Mochi but got {pet.name}"
+
+
+# ── Test 9: handle_recurring() with weekly frequency advances by 7 days ──────
+
+def test_handle_recurring_weekly(today):
+    """handle_recurring() on a weekly task must schedule the next occurrence 7 days out."""
+    owner = Owner(name="Morgan")
+    pet = Pet(name="Gizmo", species="rabbit")
+    task = Task(
+        "Nail trim",
+        due_time="10:00",
+        due_date=today,
+        frequency="weekly",
+        priority="high",
+        duration_minutes=15,
+    )
+    pet.add_task(task)
+    owner.add_pet(pet)
+    scheduler = Scheduler(owner)
+
+    initial_count = len(pet.list_tasks())
+    scheduler.handle_recurring(pet, task)
+
+    assert task.completed is True
+    assert len(pet.list_tasks()) == initial_count + 1
+    new_task = pet.list_tasks()[-1]
+    assert new_task.due_date == today + timedelta(weeks=1)
+    assert new_task.completed is False
+    assert new_task.frequency == "weekly"
+    assert new_task.priority == "high"
+    assert new_task.duration_minutes == 15
+
+
+# ── Test 10: handle_recurring() with "once" does NOT create a new task ────────
+
+def test_handle_recurring_once_no_new_task(today):
+    """handle_recurring() on a one-time task must complete it without adding a follow-up."""
+    owner = Owner(name="Riley")
+    pet = Pet(name="Pepper", species="cat")
+    task = Task("Vet visit", due_time="11:00", due_date=today, frequency="once")
+    pet.add_task(task)
+    owner.add_pet(pet)
+    scheduler = Scheduler(owner)
+
+    initial_count = len(pet.list_tasks())
+    scheduler.handle_recurring(pet, task)
+
+    assert task.completed is True
+    assert len(pet.list_tasks()) == initial_count, (
+        "A 'once' task must not generate a follow-up task"
+    )
+
+
+# ── Test 11: edit_task() updates valid fields and rejects invalid ones ────────
+
+def test_edit_task_validation():
+    """edit_task() must apply valid field changes and raise ValueError for unknown fields."""
+    pet = Pet(name="Coco", species="dog")
+    pet.add_task(Task("Walk", due_time="08:00"))
+
+    # Valid edit — due_time and description should both update
+    pet.edit_task(0, due_time="09:30", description="Late walk")
+    assert pet.list_tasks()[0].due_time == "09:30"
+    assert pet.list_tasks()[0].description == "Late walk"
+
+    # Invalid field — must raise ValueError, not silently ignore
+    with pytest.raises(ValueError, match="not a valid Task field"):
+        pet.edit_task(0, nonexistent_field="oops")
+
+
+# ── Test 12: Owner with no pets returns empty results without crashing ────────
+
+def test_owner_no_pets_empty_results():
+    """sort_tasks(), detect_conflicts(), and filter_tasks() must all return [] for an owner with no pets."""
+    owner = Owner(name="NewUser")
+    scheduler = Scheduler(owner)
+
+    assert scheduler.sort_tasks() == []
+    assert scheduler.detect_conflicts() == []
+    assert scheduler.filter_tasks() == []
