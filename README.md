@@ -16,6 +16,7 @@
 | **Weekly recurrence** | Same as daily recurrence but creates the next occurrence +7 days out. |
 | **Task editing** | Any field on an existing task (description, time, date, priority, frequency, duration) can be updated in-place via an Edit expander. |
 | **Find next available slot** | Scans a pet's schedule from a given date and returns the earliest open window of a requested duration, searching up to a configurable number of days ahead. Returns `(date, "HH:MM")` or `None` if no window is found. |
+| **Data persistence** | Pets and tasks are saved to `data.json` automatically after every change (add pet, add task, complete, edit). On the next app launch, `Owner.load_from_json()` restores the full state so nothing is lost between runs. |
 
 ---
 
@@ -159,8 +160,9 @@ pip install -r requirements.txt
 pawpal_system.py      # Core logic: Task, Pet, Owner, Scheduler
 main.py               # CLI demo script (rich-formatted output)
 app.py                # Streamlit UI — sort, filter, complete, and edit tasks
+data.json             # Auto-generated; persists pets and tasks between runs
 tests/
-  test_pawpal.py      # Pytest suite (12 tests)
+  test_pawpal.py      # Pytest suite (17 tests)
 Mermaid.js            # UML class diagram source (paste into mermaid.live)
 img/
   uml_final.png       # Final UML class diagram

@@ -5,6 +5,7 @@ Run with: python -m pytest
 """
 
 from datetime import date, timedelta
+from pathlib import Path
 import pytest
 from pawpal_system import Task, Pet, Owner, Scheduler
 
@@ -267,3 +268,49 @@ def test_find_next_available_slot_returns_none_when_exhausted(today):
         "Boba", 30, search_date=today, day_start="08:00", day_end="20:00", max_days_ahead=1
     )
     assert result is None
+
+
+# ── Test 16: save_to_json / load_from_json roundtrip preserves all data ───────
+
+def test_save_load_roundtrip(tmp_path, today):
+    """save_to_json() then load_from_json() must restore every field exactly."""
+    owner = Owner(name="Robin")
+    pet = Pet(name="Finn", species="dog", allergies="chicken")
+    tomorrow = today + timedelta(days=1)
+    pet.add_task(Task("Walk",    due_time="07:00", due_date=today,    frequency="daily",  priority="high",   duration_minutes=30))
+    pet.add_task(Task("Vet",     due_time="14:00", due_date=tomorrow, frequency="once",   priority="medium", duration_minutes=60, completed=True))
+    owner.add_pet(pet)
+
+    filepath = str(tmp_path / "data.json")
+    owner.save_to_json(filepath)
+    loaded = Owner.load_from_json(filepath)
+
+    assert loaded.name == "Robin"
+    assert len(loaded.pets) == 1
+    loaded_pet = loaded.pets[0]
+    assert loaded_pet.name == "Finn"
+    assert loaded_pet.allergies == "chicken"
+    assert len(loaded_pet.tasks) == 2
+
+    t0, t1 = loaded_pet.tasks
+    assert t0.description == "Walk"
+    assert t0.due_date == today          # restored as date, not string
+    assert isinstance(t0.due_date, date)
+    assert t0.frequency == "daily"
+    assert t0.priority == "high"
+    assert t0.duration_minutes == 30
+    assert t0.completed is False
+
+    assert t1.description == "Vet"
+    assert t1.due_date == tomorrow
+    assert t1.completed is True
+
+
+# ── Test 17: load_from_json with missing file returns a default Owner ──────────
+
+def test_load_from_json_missing_file_returns_default():
+    """load_from_json() must return a fresh Owner when the file does not exist."""
+    result = Owner.load_from_json("__nonexistent_pawpal_data__.json")
+    assert isinstance(result, Owner)
+    assert result.name == "Jordan"
+    assert result.pets == []

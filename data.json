@@ -1,0 +1,32 @@
+{
+  "name": "Jordan",
+  "pets": [
+    {
+      "name": "Gir",
+      "species": "cat",
+      "dietary_restrictions": "",
+      "allergies": "",
+      "health_conditions": "",
+      "tasks": [
+        {
+          "description": "Breakfast",
+          "due_time": "07:00",
+          "due_date": "2026-03-26",
+          "completed": false,
+          "frequency": "daily",
+          "priority": "high",
+          "duration_minutes": 20
+        },
+        {
+          "description": "nap",
+          "due_time": "09:00",
+          "due_date": "2026-03-26",
+          "completed": false,
+          "frequency": "daily",
+          "priority": "medium",
+          "duration_minutes": 60
+        }
+      ]
+    }
+  ]
+}

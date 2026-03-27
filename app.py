@@ -8,7 +8,7 @@ st.caption("Smart pet care scheduling — sort, filter, detect conflicts, and au
 
 # ─── Session state: owner persists across reruns ──────────────────────────
 if "owner" not in st.session_state:
-    st.session_state["owner"] = Owner(name="Jordan")
+    st.session_state["owner"] = Owner.load_from_json()
 owner: Owner = st.session_state["owner"]
 scheduler = Scheduler(owner)
 
@@ -28,6 +28,7 @@ if add_pet_btn:
     if name:
         if not any(p.name == name for p in owner.list_pets()):
             owner.add_pet(Pet(name=name, species=new_species))
+            owner.save_to_json()
             st.success(f"Added {name} the {new_species}!")
         else:
             st.info(f"{name} is already in the roster.")
@@ -76,6 +77,7 @@ else:
                 frequency=frequency,
                 duration_minutes=int(duration),
             ))
+            owner.save_to_json()
             st.success(f"Added '{title}' to {task_pet}.")
             # Immediate conflict check after adding
             conflicts = scheduler.detect_conflicts()
@@ -167,6 +169,7 @@ else:
             else:
                 next_d = None
             scheduler.handle_recurring(sel_pet, sel_task)
+            owner.save_to_json()
             if next_d:
                 st.success(f"Done! Next '{sel_task.description}' auto-scheduled for {next_d}.")
             else:
@@ -206,6 +209,7 @@ else:
                     frequency=new_freq,
                     duration_minutes=int(new_dur),
                 )
+                owner.save_to_json()
                 st.success("Task updated!")
                 st.rerun()
 
