@@ -103,12 +103,15 @@ with btn_col2:
 completed_arg = {"Pending": False, "Done": True, "All": None}[status_filter]
 pet_arg = None if pet_filter == "All" else pet_filter
 
-filtered = scheduler.filter_tasks(completed=completed_arg, pet_name=pet_arg)
-_rank = {"high": 0, "medium": 1, "low": 2}
 if sort_by == "Priority":
-    filtered.sort(key=lambda pr: (_rank.get(pr[1].priority, 1), pr[1].due_date, pr[1].due_time))
+    base = scheduler.sort_by_priority()
 else:
-    filtered.sort(key=lambda pr: (pr[1].due_date, pr[1].due_time))
+    base = scheduler.sort_tasks()
+filtered = [
+    (p, t) for p, t in base
+    if (completed_arg is None or t.completed == completed_arg)
+    and (pet_arg is None or p.name == pet_arg)
+]
 
 # Active state summary
 pills = [f"sorted by {sort_by.lower()}"]
@@ -210,11 +213,13 @@ st.divider()
 
 # ─── Full Schedule ─────────────────────────────────────────────────────────
 st.subheader("Full Schedule")
-st.caption("All tasks sorted by date and time, with conflict detection.")
+st.caption("All tasks with conflict detection. Choose sort order below.")
+
+sched_sort = st.radio("Sort schedule by", ["Time", "Priority"], horizontal=True, key="sched_sort")
 
 if st.button("Generate schedule"):
     conflicts = scheduler.detect_conflicts()
-    sorted_tasks = scheduler.sort_tasks()
+    sorted_tasks = scheduler.sort_by_priority() if sched_sort == "Priority" else scheduler.sort_tasks()
 
     if conflicts:
         for w in conflicts:
@@ -223,15 +228,16 @@ if st.button("Generate schedule"):
         st.success("No scheduling conflicts detected!")
 
     if sorted_tasks:
+        _pri_label = {"high": "🔴 high", "medium": "🟡 medium", "low": "🟢 low"}
         st.table([
             {
                 "Pet": p.name,
                 "Task": t.description,
                 "Date": str(t.due_date),
                 "Time": t.due_time,
-                "Priority": t.priority,
+                "Priority": _pri_label.get(t.priority, t.priority),
                 "Repeat": t.frequency,
-                "Done": "✓" if t.completed else "○",
+                "Done": "✅" if t.completed else "○",
             }
             for p, t in sorted_tasks
         ])

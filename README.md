@@ -4,6 +4,20 @@
 
 ---
 
+## Features
+
+| Feature | Description |
+|---|---|
+| **Sort by time** | All tasks across all pets are returned in chronological order (by due date, then due time) so the owner always sees what's coming up next. |
+| **Sort by priority** | Tasks can be sorted high → medium → low, with time used as a tiebreaker. Selectable in the UI via a Sort popover. |
+| **Filter tasks** | Narrow the task list by pet name, completion status, or both. A live counter shows how many tasks match the current filter. |
+| **Conflict warnings** | If two tasks are scheduled for the same pet at the same date and time, a human-readable warning is shown — no crashing, just a yellow banner. Fires on task add and on Generate Schedule. |
+| **Daily recurrence** | Marking a `daily` task complete automatically creates the next occurrence dated +1 day, with all fields (priority, duration, frequency) preserved. |
+| **Weekly recurrence** | Same as daily recurrence but creates the next occurrence +7 days out. |
+| **Task editing** | Any field on an existing task (description, time, date, priority, frequency, duration) can be updated in-place via an Edit expander. |
+
+---
+
 ## System Architecture
 
 PawPal+ is built around four Python classes in `pawpal_system.py`:
@@ -23,21 +37,31 @@ Pet   "1" --> "0..*" Task : has
 Owner "1" --> "1"    Scheduler : uses
 ```
 
+### UML Diagram
+
+<img src='img/uml_final.png' title='PawPal+ UML Class Diagram' width='' alt='PawPal+ UML Class Diagram' class='center-block' />
+
 ---
 
-## Smarter Scheduling
+## 📸 Demo
 
-The `Scheduler` class implements five algorithmic features:
+### CLI Demo (`main.py`)
 
-1. **Sort by time** — `sort_tasks()` returns all tasks across all pets in chronological order (by due date, then due time). Tasks added in any order are always displayed correctly.
+Today's Schedule — tasks sorted chronologically across all pets:
 
-2. **Sort by priority** — `sort_by_priority()` returns tasks ordered high → medium → low, using a rank map `{"high": 0, "medium": 1, "low": 2}`. Time is used as a tiebreaker within the same priority level. Both sort modes are user-selectable in the UI via a **Sort ▾** popover.
+<img src='img/mainpy_todays_schedule.png' title='PawPal+ CLI — Today\'s Schedule' width='' alt='PawPal+ CLI — Today\'s Schedule' class='center-block' />
 
-3. **Filter tasks** — `filter_tasks(completed, pet_name)` narrows the task list by completion status, pet name, or both. Useful for showing only today's pending tasks or a single pet's schedule. Accessible in the UI via a **Filter ▾** popover alongside a live summary (`Showing X of Y tasks`).
+Conflict Warning — two tasks for the same pet at the same time:
 
-4. **Conflict detection** — `detect_conflicts()` scans for any two tasks assigned to the same pet at the same date and time, returning human-readable warnings rather than crashing. Fires immediately when a task is added and again on "Generate Schedule".
+<img src='img/mainpy_conflict_warning.png' title='PawPal+ CLI — Conflict Warning' width='' alt='PawPal+ CLI — Conflict Warning' class='center-block' />
 
-5. **Recurring task automation** — `handle_recurring(pet, task)` marks a task complete and automatically creates the next occurrence: +1 day for `"daily"` tasks, +7 days for `"weekly"` tasks. All fields (priority, duration, frequency) are copied to the next occurrence via `dataclasses.replace()`. One-time tasks are only marked complete.
+Final Schedule — after recurring task completion and rescheduling:
+
+<img src='img/mainpy_final_schedule.png' title='PawPal+ CLI — Final Schedule' width='' alt='PawPal+ CLI — Final Schedule' class='center-block' />
+
+### Streamlit UI (`app.py`)
+
+*Screenshot coming after UI polish pass.*
 
 ---
 
@@ -51,6 +75,12 @@ python main.py
 
 Expected output includes: a schedule sorted by time, a schedule sorted by priority, a conflict warning for Luna's 08:00 overlap, a filtered pending task list, a Mochi-only filtered view, a recurring task being completed and rescheduled (with all fields preserved), a task edit, and a pet being added then removed.
 
+To launch the Streamlit UI:
+
+```bash
+streamlit run app.py
+```
+
 ---
 
 ## Testing PawPal+
@@ -59,7 +89,7 @@ Expected output includes: a schedule sorted by time, a schedule sorted by priori
 python -m pytest
 ```
 
-The test suite in `tests/test_pawpal.py` contains 11 tests organized into two groups:
+The test suite in `tests/test_pawpal.py` contains 12 tests organized into two groups:
 
 **Core behavior (tests 1–6)** — verifies that the fundamental building blocks work correctly.
 
@@ -72,7 +102,7 @@ The test suite in `tests/test_pawpal.py` contains 11 tests organized into two gr
 | `test_detect_conflicts_same_pet_same_time` | `detect_conflicts()` flags same-pet same-time collisions |
 | `test_handle_recurring_daily` | Completing a daily task creates a new task dated tomorrow |
 
-**Edge cases (tests 7–11)** — verifies boundary conditions and less-obvious behaviors.
+**Edge cases (tests 7–12)** — verifies boundary conditions and less-obvious behaviors.
 
 | Test | What it verifies |
 |---|---|
@@ -104,7 +134,10 @@ pawpal_system.py      # Core logic: Task, Pet, Owner, Scheduler
 main.py               # CLI demo script (rich-formatted output)
 app.py                # Streamlit UI — sort, filter, complete, and edit tasks
 tests/
-  test_pawpal.py      # Pytest suite
+  test_pawpal.py      # Pytest suite (12 tests)
 Mermaid.js            # UML class diagram source (paste into mermaid.live)
+img/
+  uml_final.png       # Final UML class diagram
+  mainpy_*.png        # CLI demo screenshots
 reflection.md         # Design decisions and AI collaboration notes
 ```

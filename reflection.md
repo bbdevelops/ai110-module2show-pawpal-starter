@@ -49,41 +49,73 @@ Also, the conflict detection method detect_conflicts() uses a compact list compr
 ## 3. AI Collaboration
 
 **a. How you used AI**
-
 - How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
 - What kinds of prompts or questions were most helpful?
 
-**b. Judgment and verification**
+AI (Claude via Claude Code) was used at every phase, but the role shifted as the project matured:
 
+- **Phase 1 — Design brainstorming:** I described the four-class hierarchy and asked Claude to generate the initial Mermaid.js UML. This was the fastest win — getting a visual diagram in seconds gave me something concrete to critique and correct rather than starting from scratch.
+- **Phase 2 — Scaffolding and docstrings:** I used Claude to generate class skeletons and stub out method signatures from the UML, then filled in the logic myself. I also used the "Generate documentation" action to add one-line docstrings after the logic was finalized, not before — writing docs for code that's already working is more accurate.
+- **Phase 4 — Algorithm brainstorming:** I opened a fresh chat session scoped to scheduling logic only and asked Claude to suggest a lightweight conflict detection strategy. Keeping this separate from the core implementation chat avoided the AI mixing up context between design and algorithm sessions.
+- **Phase 5 — Test generation:** I asked Claude to draft the pytest suite against the finalized `pawpal_system.py`. I reviewed each test before saving it — AI-generated tests are a starting point, not a finished product.
+
+The most effective prompt pattern throughout was "Given this specific file, do X" (using `#file:` references) rather than open-ended questions. Specific context produced specific, usable output.
+
+**b. Judgment and verification**
 - Describe one moment where you did not accept an AI suggestion as-is.
 - How did you evaluate or verify what the AI suggested?
+
+The clearest example of rejecting an AI suggestion was during `detect_conflicts()`. Claude's first version raised a `ValueError` when a conflict was found — the function crashed the program. I rejected this because the requirement was a warning system, not an exception. A pet owner adding a second 8:00 AM task shouldn't see their app break; they should see a yellow banner. I rewrote the function to collect all conflicts into a list of human-readable strings and return them, leaving the decision of what to do with the warning to the caller (UI or CLI). I verified the behavior by writing `test_detect_conflicts_same_pet_same_time` before touching the UI, confirming the function returned a non-empty list rather than throwing.
 
 ---
 
 ## 4. Testing and Verification
 
 **a. What you tested**
-
 - What behaviors did you test?
 - Why were these tests important?
 
-**b. Confidence**
+The pytest suite covers all five Scheduler features plus the core class behaviors:
 
+- **Task completion** — `mark_complete()` flips `completed` from False to True (the simplest possible sanity check).
+- **Task addition** — `add_task()` grows the pet's task list by exactly one.
+- **Chronological sort** — `sort_tasks()` returns tasks in ascending date/time order even when added out of order.
+- **Priority sort** — `sort_by_priority()` returns tasks in high → medium → low order.
+- **Filter by status** — `filter_tasks(completed=True)` returns only finished tasks and nothing else.
+- **Filter by pet name** — `filter_tasks(pet_name=...)` returns only that pet's tasks.
+- **Conflict detection** — `detect_conflicts()` flags same-pet same-time collisions as warning strings.
+- **Daily recurrence** — completing a daily task adds a new task dated tomorrow with all fields preserved.
+- **Weekly recurrence** — completing a weekly task adds a new task 7 days out.
+- **One-time task** — completing a "once" task marks it done without generating a follow-up.
+- **Empty owner edge case** — all three Scheduler methods return `[]` safely when the owner has no pets.
+- **edit_task validation** — valid updates apply correctly; unknown field names raise `ValueError`.
+
+These tests mattered because the Scheduler has no UI safety net — if `sort_by_priority()` returns tasks in the wrong order, a pet owner gets a misleading schedule with no error message. Tests are the only way to catch logic bugs in a stateless service layer.
+
+**b. Confidence**
 - How confident are you that your scheduler works correctly?
 - What edge cases would you test next if you had more time?
+
+**★★★★★** — All 12 tests pass. The suite covers both happy paths and the edge cases most likely to cause silent failures (empty owner, one-time vs recurring, unknown fields). The one area I would add coverage if time allowed is duration-based overlap: two tasks for the same pet at 08:00 and 08:15, where the first task takes 30 minutes. The current conflict check only catches exact time matches, so that overlap goes undetected. A future test would assert that `detect_conflicts()` flags it.
 
 ---
 
 ## 5. Reflection
 
 **a. What went well**
-
 - What part of this project are you most satisfied with?
 
-**b. What you would improve**
+The CLI-first workflow was the best structural decision of the project. Building and verifying all logic in `main.py` before touching Streamlit meant I never had to debug business logic inside a UI event loop. Every Streamlit bug I encountered was genuinely a UI wiring problem, not a hidden flaw in the backend — and that distinction made debugging fast. The `(Pet, Task)` tuple as the universal data contract was also the right call: once the Scheduler always returned pairs, every display function knew exactly what it was working with.
 
+**b. What you would improve**
 - If you had another iteration, what would you improve or redesign?
 
-**c. Key takeaway**
+Two things stand out for a next iteration:
 
+1. **Duration-aware conflict detection.** The current check flags exact double-bookings but misses overlapping tasks (e.g., a 30-minute walk starting at 07:45 overlaps an 08:00 feeding). Fixing this requires storing reliable duration estimates and switching from an equality check to an interval-intersection algorithm — more complex, but more honest about the real constraint.
+2. **Data persistence.** Every app restart wipes the schedule. Saving to JSON via `json.dump` / `json.load` with Python's `dataclasses.asdict()` would make the app genuinely usable for a real pet owner rather than a demo.
+
+**c. Key takeaway**
 - What is one important thing you learned about designing systems or working with AI on this project?
+
+The most valuable skill in AI-assisted development is knowing when to say "that's wrong for this design." AI tools produce output fast — faster than I can reason about correctness — which means the temptation is to accept suggestions and move on. The moments that mattered most in this project were the ones where I slowed down: reading the generated code line by line, asking "does this fit my design contract," and rewriting the parts that didn't. AI is a strong first draft, not a finished answer. The lead architect role is real, even when the AI writes most of the code.

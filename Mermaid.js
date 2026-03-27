@@ -5,6 +5,8 @@ classDiagram
         +date due_date
         +bool completed
         +str frequency
+        +str priority
+        +int duration_minutes
         +mark_complete()
     }
 
@@ -32,6 +34,7 @@ classDiagram
     class Scheduler {
         +Owner owner
         +sort_tasks() list~tuple~
+        +sort_by_priority() list~tuple~
         +filter_tasks(completed, pet_name) list~tuple~
         +detect_conflicts() list~str~
         +handle_recurring(pet: Pet, task: Task)
