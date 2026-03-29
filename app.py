@@ -4,6 +4,8 @@ from pawpal_system import Owner, Pet, Task, Scheduler
 
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 st.title("🐾 PawPal+")
+
+_PRI_LABEL = {"high": "🔴 high", "medium": "🟡 medium", "low": "🟢 low"}
 st.caption("Smart pet care scheduling — sort, filter, detect conflicts, and automate recurring tasks.")
 
 # ─── Session state: owner persists across reruns ──────────────────────────
@@ -130,7 +132,7 @@ if filtered:
         st.markdown(
             f"{done_icon} **{task.description}**{freq_tag} — "
             f"🐾 {pet.name} · {task.due_date} {task.due_time} · "
-            f"{task.priority} priority · {task.duration_minutes} min"
+            f"{_PRI_LABEL.get(task.priority, task.priority)} priority · {task.duration_minutes} min"
         )
 else:
     st.info("No tasks match the current filter.")
@@ -232,14 +234,13 @@ if st.button("Generate schedule"):
         st.success("No scheduling conflicts detected!")
 
     if sorted_tasks:
-        _pri_label = {"high": "🔴 high", "medium": "🟡 medium", "low": "🟢 low"}
         st.table([
             {
                 "Pet": p.name,
                 "Task": t.description,
                 "Date": str(t.due_date),
                 "Time": t.due_time,
-                "Priority": _pri_label.get(t.priority, t.priority),
+                "Priority": _PRI_LABEL.get(t.priority, t.priority),
                 "Repeat": t.frequency,
                 "Done": "✅" if t.completed else "○",
             }

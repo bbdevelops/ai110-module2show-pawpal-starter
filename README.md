@@ -63,8 +63,7 @@ Final Schedule — after recurring task completion and rescheduling:
 
 ### Streamlit UI (`app.py`)
 
-*Screenshot coming after UI polish pass.*
-
+<img src='img/final_app_screenshot.png' title='Final App Screenshot' width='' alt='Final App Screenshot' class='center-block' />
 ---
 
 ## Running the Demo
